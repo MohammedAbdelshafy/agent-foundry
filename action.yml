@@ -1,0 +1,33 @@
+name: 'Agent Foundry'
+description: 'Scaffold a working Python agent project in CI: manifest, skill description, runnable entrypoint, and test suite. Standard library only.'
+author: 'Mohammed Abdelshafy'
+branding:
+  icon: 'cpu'
+  color: 'green'
+inputs:
+  name:
+    description: 'Agent name: lowercase letters, numbers, hyphens only'
+    required: true
+  dir:
+    description: 'Parent directory for the scaffolded project, relative to your repo root'
+    required: false
+    default: '.'
+  force:
+    description: 'Overwrite a non-empty directory: true or false'
+    required: false
+    default: 'false'
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout Agent Foundry
+      uses: actions/checkout@v4
+      with:
+        repository: MohammedAbdelshafy/agent-foundry
+        path: _agent_foundry
+    - name: Scaffold agent project
+      shell: bash
+      run: |
+        cd _agent_foundry
+        args="new \"${{ inputs.name }}\" --dir \"${{ github.workspace }}/${{ inputs.dir }}\""
+        if [ "${{ inputs.force }}" = "true" ]; then args="$args --force"; fi
+        python3 -m agent_foundry $args

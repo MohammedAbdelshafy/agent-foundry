@@ -6,7 +6,7 @@ and a test suite — all using only the Python standard library.
 
 ## Install
 
-No dependencies. Requires Python 3.8 or newer.
+No dependencies. Requires Python 3.9 or newer.
 
 ```sh
 git clone https://github.com/MohammedAbdelshafy/agent-foundry.git
@@ -18,6 +18,17 @@ Run it directly:
 ```sh
 python3 agent_foundry.py --help
 ```
+
+Or install it to get the `agent-foundry` console script:
+
+```sh
+pip install .
+# or straight from GitHub:
+pip install git+https://github.com/MohammedAbdelshafy/agent-foundry.git
+```
+
+After installing, replace `python3 agent_foundry.py` with `agent-foundry` in
+the commands below (and `python3 -m agent_foundry` also works).
 
 ## Usage
 
@@ -50,8 +61,9 @@ Test the scaffolded agent:
 cd projects/my-agent && python3 -m unittest discover -s tests
 ```
 
-Name rules: lowercase letters, numbers, and hyphens only. A non-empty target
-directory is not overwritten unless `--force` is passed.
+Name rules: lowercase letters, numbers, and hyphens only; the name must not
+start or end with a hyphen. A non-empty target directory is not overwritten
+unless `--force` is passed.
 
 ### Validate a project
 
@@ -61,15 +73,17 @@ python3 agent_foundry.py validate ./projects/my-agent
 ```
 
 Validation checks that `manifest.json` parses and contains the required keys
-(`name`, `version`, `description`, `entrypoint`, `skills` as a list), that the
-entrypoint file exists, and that `SKILL.md` is present. It exits non-zero and
-lists problems otherwise.
+(`name`, `version`, `description` as strings; `entrypoint` as a string;
+`skills` as a list of strings), that the entrypoint is a relative path inside
+the project and the file exists, and that `SKILL.md` is present. It exits
+non-zero and lists problems otherwise.
 
 ## Inputs / outputs
 
 - `new <name> [--dir DIR] [--force]` → writes files under `<DIR>/<name>/`,
-  prints the target path, exit 0. Exit 2 on invalid name or refusal to
-  overwrite a non-empty directory without `--force`.
+  prints the target path, exit 0. Exit 2 on invalid name, an unusable
+  `--dir`/target path, or refusal to overwrite a non-empty directory without
+  `--force`; exit 1 if files cannot be created or written.
 - `validate <project-dir>` → prints `valid agent project: ...` (exit 0) or a
   list of problems (exit 1).
 

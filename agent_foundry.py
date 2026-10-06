@@ -12,7 +12,11 @@ import os
 import re
 import sys
 
-NAME_RE = re.compile(r"^[a-z0-9-]+$")
+__version__ = "0.1.0"
+
+# Names must not start or end with a hyphen: a leading hyphen collides with
+# CLI flags on later invocations, and both ends produce awkward directory names.
+NAME_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
 
 REQUIRED_MANIFEST_KEYS = ("name", "version", "description", "entrypoint", "skills")
 
@@ -93,7 +97,7 @@ MANIFEST_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manife
 
 def load_manifest(path=MANIFEST_PATH):
     """Load and return the project's manifest.json as a dict."""
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, "r", encoding="utf-8-sig") as fh:
         data = json.load(fh)
     if not isinstance(data, dict):
         raise ValueError("manifest.json must contain a JSON object")
@@ -214,20 +218,37 @@ def cmd_new(args):
     name = args.name
     if not NAME_RE.match(name):
         print(
-            "error: invalid agent name %r: use lowercase letters, numbers, and hyphens only"
+            "error: invalid agent name %r: use lowercase letters, numbers, and "
+            "hyphens only, and do not start or end the name with a hyphen"
             % name,
             file=sys.stderr,
         )
         return 2
-    base = os.path.abspath(args.dir)
+    base = os.path.abspath(os.path.expanduser(args.dir))
+    if os.path.exists(base) and not os.path.isdir(base):
+        print("error: --dir is not a directory: %s" % base, file=sys.stderr)
+        return 2
     target = os.path.join(base, name)
+    if os.path.exists(target) and not os.path.isdir(target):
+        print(
+            "error: target %r exists and is not a directory; choose another name"
+            % target,
+            file=sys.stderr,
+        )
+        return 2
     if os.path.isdir(target) and os.listdir(target) and not args.force:
         print(
             "error: directory %r is not empty; pass --force to overwrite" % target,
             file=sys.stderr,
         )
         return 2
-    os.makedirs(target, exist_ok=True)
+    try:
+        os.makedirs(target, exist_ok=True)
+    except OSError as exc:
+        print(
+            "error: cannot create directory %r: %s" % (target, exc), file=sys.stderr
+        )
+        return 1
     files = {
         "manifest.json": _manifest_template(name),
         "SKILL.md": _skill_template(name),
@@ -235,11 +256,15 @@ def cmd_new(args):
         os.path.join("tests", "test_agent.py"): _scaffold_test_template(name),
         "README.md": _readme_template(name),
     }
-    for relpath, content in files.items():
-        full = os.path.join(target, relpath)
-        os.makedirs(os.path.dirname(full), exist_ok=True)
-        with open(full, "w", encoding="utf-8") as fh:
-            fh.write(content)
+    try:
+        for relpath, content in files.items():
+            full = os.path.join(target, relpath)
+            os.makedirs(os.path.dirname(full), exist_ok=True)
+            with open(full, "w", encoding="utf-8") as fh:
+                fh.write(content)
+    except OSError as exc:
+        print("error: failed to write scaffold files: %s" % exc, file=sys.stderr)
+        return 1
     print("scaffolded agent %r at %s" % (name, target))
     return 0
 
@@ -256,7 +281,7 @@ def cmd_validate(args):
         manifest = None
     else:
         try:
-            with open(manifest_path, "r", encoding="utf-8") as fh:
+            with open(manifest_path, "r", encoding="utf-8-sig") as fh:
                 manifest = json.load(fh)
         except (OSError, json.JSONDecodeError) as exc:
             problems.append("manifest.json does not parse: %s" % exc)
@@ -269,13 +294,33 @@ def cmd_validate(args):
                 for key in REQUIRED_MANIFEST_KEYS:
                     if key not in manifest:
                         problems.append("manifest.json missing required key: %s" % key)
-                if "skills" in manifest and not isinstance(manifest["skills"], list):
-                    problems.append("manifest.json 'skills' must be a list")
+                for key in ("name", "version", "description"):
+                    if key in manifest and not isinstance(manifest[key], str):
+                        problems.append("manifest.json %r must be a string" % key)
+                if "skills" in manifest:
+                    skills = manifest["skills"]
+                    if not isinstance(skills, list):
+                        problems.append("manifest.json 'skills' must be a list")
+                    elif not all(isinstance(s, str) for s in skills):
+                        problems.append(
+                            "manifest.json 'skills' must be a list of strings"
+                        )
                 entrypoint = manifest.get("entrypoint")
-                if isinstance(entrypoint, str):
-                    entry_path = os.path.join(project, entrypoint)
-                    if not os.path.isfile(entry_path):
-                        problems.append("entrypoint not found: %s" % entrypoint)
+                if "entrypoint" in manifest and not isinstance(entrypoint, str):
+                    problems.append("manifest.json 'entrypoint' must be a string")
+                elif isinstance(entrypoint, str):
+                    # The entrypoint must live inside the project: absolute
+                    # paths and ".." segments are rejected, not resolved.
+                    parts = entrypoint.replace("\\", "/").split("/")
+                    if os.path.isabs(entrypoint) or ".." in parts:
+                        problems.append(
+                            "entrypoint must be a relative path inside the "
+                            "project: %s" % entrypoint
+                        )
+                    else:
+                        entry_path = os.path.join(project, entrypoint)
+                        if not os.path.isfile(entry_path):
+                            problems.append("entrypoint not found: %s" % entrypoint)
     skill_path = os.path.join(project, "SKILL.md")
     if not os.path.isfile(skill_path):
         problems.append("missing SKILL.md")
@@ -289,7 +334,20 @@ def cmd_validate(args):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(prog="agent-foundry", description=__doc__)
+    parser = argparse.ArgumentParser(
+        prog="agent-foundry",
+        description=__doc__,
+        epilog=(
+            "Examples:\n"
+            "  agent-foundry new my-agent --dir ./projects\n"
+            "  agent-foundry validate ./projects/my-agent\n"
+            "Exit codes: 0 success, 1 validation/IO failure, 2 usage error."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--version", action="version", version="agent-foundry " + __version__
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_new = sub.add_parser("new", help="Scaffold a new agent project.")

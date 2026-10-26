@@ -2,7 +2,7 @@
 
 A command-line starter that creates a small Python workflow project from a consistent template. It adds a manifest, project instructions, a runnable entrypoint and tests, using the Python standard library. The repo, package and command retain their current technical names.
 
-The approved product name is **Agent Foundry**. The repository and command identifiers remain unchanged. The repository and command identifiers remain unchanged.
+Create a consistent starter project with a manifest, instructions, a runnable entry point, and tests. Review the generated project before using it in production.
 
 ## Install
 

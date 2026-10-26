@@ -2,11 +2,11 @@
 type: repository
 status: active
 owner_repo: MohammedAbdelshafy/agent-foundry
-product_name: Workflow Starter Kit
+product_name: Agent Foundry
 source_of_truth: https://github.com/MohammedAbdelshafy/agent-foundry
 ---
 
-# Workflow Starter Kit CONTEXT
+# Agent Foundry CONTEXT
 
 One job: create a consistent starter project and check whether its required files and configuration are present.
 

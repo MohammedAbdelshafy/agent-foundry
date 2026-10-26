@@ -1,4 +1,4 @@
-# Workflow Starter Kit
+# Agent Foundry
 
 - Setup and commands: [README.md](README.md)
 - Implementation: [agent_foundry.py](agent_foundry.py)

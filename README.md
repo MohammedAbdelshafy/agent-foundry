@@ -1,8 +1,8 @@
-# agent-foundry
+# Workflow Starter Kit
 
-A command-line tool that scaffolds a working Python agent project in one command.
-The scaffold includes a manifest, a skill description, a runnable entrypoint,
-and a test suite — all using only the Python standard library.
+A command-line starter that creates a small Python workflow project from a consistent template. It adds a manifest, project instructions, a runnable entrypoint and tests, using the Python standard library. The repo, package and command retain their current technical names.
+
+The customer-facing name for this project is **Workflow Starter Kit**. The repository and command identifiers remain unchanged.
 
 ## Install
 
